@@ -49,6 +49,8 @@ Usage of ./Talon:
     	File containing the list of domain controllers to connect to
   -K	Test against Kerberos only
   -L	Test against LDAP only
+  -LockErr float
+      Repetative lockout errors (default 1)
   -Lockout float
     	Account lockout period in minutes (default 60)
   -O string
