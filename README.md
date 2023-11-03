@@ -14,7 +14,10 @@ Talon is a tool designed to perform automated password guessing attacks while re
 More info about the techniques can be found on the following [Blog](https://www.optiv.com/explore-optiv-insights/blog/digging-your-talons-new-take-password-guessing) 
 
 ## Usage
-Download release for your OS from [releases](https://github.com/optiv/Talon/releases)
+Compile with go directly using the following command:
+```
+go install github.com/Tylous/Talon@latest
+```
 
 ## Contributing
 Talon was developed in golang.
