@@ -408,7 +408,7 @@ func (k KERB) Login() (string, string, error) {
 	printDebug("Logging into Kerberos with %v\n", k)
 	cfg, err := config.NewConfigFromString("[libdefaults]\n         default_realm = ${REALM}\n      dns_lookup_realm = false\n         dns_lookup_kdc = true\n         [realms]\n          " + k.User.Domain + " = {\n          kdc =" + k.Host + ":88\n          }\n")
 	if k.Enum == true {
-		cfg.LibDefaults.PreferredPreauthTypes = []int{int(etypeID.DES3_CBC_SHA1_KD)}
+		cfg.LibDefaults.PreferredPreauthTypes = []int{int(etypeID.DES_CBC_CRC)}
 	}
 	if err != nil {
 		panic(err.Error())
