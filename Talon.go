@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -15,10 +14,10 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/go-ldap/ldap/v3"
 	"gopkg.in/jcmturner/gokrb5.v7/client"
 	"gopkg.in/jcmturner/gokrb5.v7/config"
 	"gopkg.in/jcmturner/gokrb5.v7/iana/etypeID"
-	"gopkg.in/ldap.v2"
 )
 
 var (
@@ -106,7 +105,7 @@ func options() *FlagOptions {
 
 // readfile reads the contents of a file and returns them as a slice of strings.
 func readfile(inputFile string) []string {
-	output, err := ioutil.ReadFile(inputFile)
+	output, err := os.ReadFile(inputFile)
 	if err != nil {
 		log.Fatal(err)
 	}
