@@ -251,7 +251,7 @@ func main() {
 		domain := strings.ToUpper(opt.domain)
 		printDebug("Domain %v\tUsernames %v\tPasswords %v\tHosts %v\tServices %v\n", domain, usernames, password, hosts, services)
 		x := 0
-		err := 0
+		consecutiveFailures := 0
 		rand.Seed(time.Now().Unix())
 		lenServices := len(services) - 1
 		for _, username := range usernames {
@@ -266,18 +266,20 @@ func main() {
 			auth := setup(services[x], hosts[n], domain, username, password, opt.enum)
 			result, forfile, _ := auth.Login()
 			fmt.Println(result)
-			if strings.Contains(result, "User's Account Locked") && opt.enum != true {
-				err++
-				if err == int(opt.lockerr) {
+			if strings.Contains(result, "User's Account Locked") && !opt.enum {
+				consecutiveFailures++
+				if consecutiveFailures == int(opt.lockerr) {
 					reader := bufio.NewReader(os.Stdin)
-					fmt.Printf("[*] %d Consecutive account lock out(s) detected - Do you want to continue.[y/n]: ", err)
+					fmt.Printf("[*] %d Consecutive account lock out(s) detected - Do you want to continue.[y/n]: ", consecutiveFailures)
 					text, _ := reader.ReadString('\n')
 					if strings.Contains(text, "y") {
-						err = 0
+						consecutiveFailures = 0
 						continue
 					}
 					log.Fatal("Shutting down")
 				}
+			} else {
+				consecutiveFailures = 0 // Reset consecutive failures if not a failure
 			}
 			if opt.outFile != "" {
 				forfile = forfile + "\n"
@@ -287,7 +289,6 @@ func main() {
 				x = 0
 			} else {
 				x++
-				err = 0
 			}
 		}
 	}
@@ -297,6 +298,7 @@ func main() {
 		counter = 0
 		var username string
 		var pwd string
+		consecutiveFailures := 0 // Add this to track consecutive failures
 		// Use previous main function but iterate through passwords and automate stuff
 		//		for _, pwd := range passwords {
 		for p := 0; p < len(passwords); p++ {
@@ -308,7 +310,6 @@ func main() {
 				domain := strings.ToUpper(opt.domain)
 				printDebug("Domain %v\tUsernames %v\tPasswords %v\tHosts %v\tServices %v\n", domain, usernames, pwd, hosts, services)
 				x := 0
-				err := 0
 				rand.Seed(time.Now().Unix())
 				lenServices := len(services) - 1
 				//				for _, username := range usernames {
@@ -326,21 +327,23 @@ func main() {
 					auth := setup(services[x], hosts[n], domain, username, pwd, opt.enum)
 					result, forfile, _ := auth.Login()
 					fmt.Println(result)
-					if strings.Contains(result, "User's Account Locked") && opt.enum != true {
-						err++
+					if strings.Contains(result, "User's Account Locked") && !opt.enum {
+						consecutiveFailures++
 						usernames[i] = usernames[len(usernames)-1]
 						usernames = usernames[:len(usernames)-1]
 						i--
-						if err == int(opt.lockerr) {
+						if consecutiveFailures == int(opt.lockerr) {
 							reader := bufio.NewReader(os.Stdin)
-							fmt.Printf("[*] %d Consecutive account lock out(s) detected - Do you want to continue.[y/n]: ", err)
+							fmt.Printf("[*] %d Consecutive account lock out(s) detected - Do you want to continue.[y/n]: ", consecutiveFailures)
 							text, _ := reader.ReadString('\n')
 							if strings.Contains(text, "y") {
-								err = 0
+								consecutiveFailures = 0
 								continue
 							}
 							log.Fatal("Shutting down")
 						}
+					} else {
+						consecutiveFailures = 0 // Reset consecutive failures if not a failure
 					}
 					if opt.outFile != "" {
 						forfile = forfile + "\n"
@@ -350,7 +353,6 @@ func main() {
 						x = 0
 					} else {
 						x++
-						err = 0
 					}
 				}
 				counter++
