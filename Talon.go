@@ -1,3 +1,4 @@
+// Package main implements a tool for password guessing and user enumeration against Active Directory.
 package main
 
 import (
@@ -25,28 +26,32 @@ var (
 	debugWriter io.Writer
 )
 
+// Authenticator is an interface for different authentication methods.
 type Authenticator interface {
 	Login() (string, string, error)
 }
 
+// User represents a user's credentials.
 type User struct {
 	Name     string
 	Password string
 	Domain   string
 }
 
+// LDAP represents an LDAP authentication attempt.
 type LDAP struct {
 	Host string
 	User
 }
 
+// KERB represents a Kerberos authentication attempt.
 type KERB struct {
 	Host string
 	User
 	Enum bool
 }
 
-// FlagOptions set at startup
+// FlagOptions contains all command-line options for the application.
 type FlagOptions struct {
 	host     string
 	hostfile string
@@ -66,6 +71,7 @@ type FlagOptions struct {
 	lockerr  float64
 }
 
+// printDebug outputs debug information if debugging is enabled.
 func printDebug(format string, v ...interface{}) {
 	if debugging {
 		output := fmt.Sprintf("[DEBUG] ")
@@ -74,6 +80,7 @@ func printDebug(format string, v ...interface{}) {
 	}
 }
 
+// options parses and returns command-line flags.
 func options() *FlagOptions {
 	host := flag.String("H", "", "Domain controller to connect to")
 	hostfile := flag.String("Hostfile", "", "File containing the list of domain controllers to connect to")
@@ -97,6 +104,7 @@ func options() *FlagOptions {
 	return &FlagOptions{host: *host, domain: *domain, user: *user, userfile: *userfile, hostfile: *hostfile, pass: *pass, outFile: *outFile, sleep: *sleep, enum: *enum, ldap: *ldap, kerb: *kerb, passfile: *passfile, lockout: *lockout, attempts: *attempts, lockerr: *lockerr}
 }
 
+// readfile reads the contents of a file and returns them as a slice of strings.
 func readfile(inputFile string) []string {
 	output, err := ioutil.ReadFile(inputFile)
 	if err != nil {
@@ -105,12 +113,14 @@ func readfile(inputFile string) []string {
 	return strings.Split(string(output), "\n")
 }
 
+// check panics if the provided error is not nil.
 func check(e error) {
 	if e != nil {
 		panic(e)
 	}
 }
 
+// writefile appends the given result to the specified file.
 func writefile(outFile, result string) {
 	cf, err := os.OpenFile(outFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	check(err)
@@ -119,6 +129,7 @@ func writefile(outFile, result string) {
 	check(err)
 }
 
+// main is the entry point of the application.
 func main() {
 	opt := options()
 	var hosts []string
@@ -357,6 +368,7 @@ func main() {
 	}
 }
 
+// setup creates and returns an Authenticator based on the provided parameters.
 func setup(service, host, domain, username, password string, enum bool) Authenticator {
 	switch service {
 	case "KERB":
@@ -367,6 +379,7 @@ func setup(service, host, domain, username, password string, enum bool) Authenti
 	return nil
 }
 
+// Login performs an LDAP authentication attempt.
 func (l LDAP) Login() (string, string, error) {
 	printDebug("Logging into LDAP with %v\n", l)
 	conn, err := ldap.DialTLS("tcp", (l.Host + ":636"), &tls.Config{InsecureSkipVerify: true})
@@ -404,6 +417,8 @@ func (l LDAP) Login() (string, string, error) {
 	forfile := fmt.Sprintf("%s %s %s\\%s:%s = %s", ("[+] "), l.Host, l.User.Domain, l.User.Name, l.User.Password, ("Success"))
 	return result, forfile, err
 }
+
+// Login performs a Kerberos authentication attempt.
 func (k KERB) Login() (string, string, error) {
 	printDebug("Logging into Kerberos with %v\n", k)
 	cfg, err := config.NewConfigFromString("[libdefaults]\n         default_realm = ${REALM}\n      dns_lookup_realm = false\n         dns_lookup_kdc = true\n         [realms]\n          " + k.User.Domain + " = {\n          kdc =" + k.Host + ":88\n          }\n")
