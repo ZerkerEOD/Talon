@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ZerkerEOD/Talon/internal/auth"
+	"github.com/ZerkerEOD/Talon/v4/internal/auth"
 )
 
 // Summary renders the end-of-run report (plain text, suitable for stdout and

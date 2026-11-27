@@ -25,11 +25,11 @@ This is the **ZerkerEOD maintenance fork** of [Tylous/Talon](https://github.com/
 
 ## Install
 ```
-go install github.com/ZerkerEOD/Talon@latest
+go install github.com/ZerkerEOD/Talon/v4@latest
 ```
 
 ## Build from source
-Talon is written in Go (module path `github.com/ZerkerEOD/Talon`, Go 1.26+ — required by the patched `golang.org/x/crypto`). Clone the repo and build — dependencies are resolved automatically from `go.mod`:
+Talon is written in Go (module path `github.com/ZerkerEOD/Talon/v4`, Go 1.26+ — required by the patched `golang.org/x/crypto`). The `/v4` suffix follows Go's semantic-import-versioning rule for v2+ modules. Clone the repo and build — dependencies are resolved automatically from `go.mod`:
 ```
 git clone https://github.com/ZerkerEOD/Talon
 cd Talon

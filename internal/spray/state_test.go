@@ -3,7 +3,7 @@ package spray
 import (
 	"testing"
 
-	"github.com/ZerkerEOD/Talon/internal/auth"
+	"github.com/ZerkerEOD/Talon/v4/internal/auth"
 )
 
 func TestNormalizeUser(t *testing.T) {

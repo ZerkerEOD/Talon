@@ -12,10 +12,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ZerkerEOD/Talon/internal/auth"
-	"github.com/ZerkerEOD/Talon/internal/config"
-	"github.com/ZerkerEOD/Talon/internal/input"
-	"github.com/ZerkerEOD/Talon/internal/spray"
+	"github.com/ZerkerEOD/Talon/v4/internal/auth"
+	"github.com/ZerkerEOD/Talon/v4/internal/config"
+	"github.com/ZerkerEOD/Talon/v4/internal/input"
+	"github.com/ZerkerEOD/Talon/v4/internal/spray"
 )
 
 const banner = `

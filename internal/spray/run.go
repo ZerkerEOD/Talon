@@ -10,8 +10,8 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ZerkerEOD/Talon/internal/auth"
-	"github.com/ZerkerEOD/Talon/internal/config"
+	"github.com/ZerkerEOD/Talon/v4/internal/auth"
+	"github.com/ZerkerEOD/Talon/v4/internal/config"
 )
 
 // ObservedLocked returns the cumulative number of distinct accounts observed locked.

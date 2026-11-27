@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ZerkerEOD/Talon/internal/auth"
+	"github.com/ZerkerEOD/Talon/v4/internal/auth"
 )
 
 // rateWindow is the sliding window over which observed lockouts are counted for
