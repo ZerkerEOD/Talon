@@ -1,0 +1,28 @@
+name: Release
+
+# Auto-create a GitHub Release whenever a v* tag is pushed, so a tag never again
+# lands without a matching Release. Notes are generated from commits/PRs since
+# the previous tag. No binaries are attached (install is via `go install`); add a
+# build/upload step here later if prebuilt binaries are ever wanted.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Release from tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag
