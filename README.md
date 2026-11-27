@@ -11,29 +11,30 @@
 
 Talon is a tool designed to perform automated password guessing attacks while remaining undetected. Talon can enumerate a list of users to identify which users are valid, using Kerberos. Talon can also perform a password guessing attack against the Kerberos and LDAPS (LDAP Secure) services. Talon can either use a single domain controller or multiple ones to perform these attacks, randomizing each attempt, between the domain controllers and services (LDAP or Kerberos).
 
-More info about the techniques can be found on the following [Blog](https://www.optiv.com/explore-optiv-insights/blog/digging-your-talons-new-take-password-guessing) 
+More info about the original techniques can be found on the following [Blog](https://www.optiv.com/explore-optiv-insights/blog/digging-your-talons-new-take-password-guessing).
 
-## Usage
-Compile with go directly using the following command:
+> **Use only with explicit authorization.** Talon generates authentication events and can lock accounts in the target environment. Run it only against systems you are authorized to test.
+
+## About this fork
+
+This is the **ZerkerEOD maintenance fork** of [Tylous/Talon](https://github.com/Tylous/Talon). Upstream is no longer actively maintained (its last release merged this fork's own pull request). Notable changes in this fork over upstream:
+
+- **Enumeration is now safe by default.** `-E` performs *pre-auth-less* Kerberos enumeration that never submits a password and therefore cannot increment `badPwdCount` or lock accounts. This fixes the mass-lockout behavior reported in upstream issue #3. The previous (pre-auth) enumeration is still available as an explicit, opt-in aggressive mode via `-Eagg`.
+- **Per-user, DC-aware lockout protection.** Lockout tracking is now per user (not a single global counter). With `-Threshold <AD lockout threshold>`, Talon stops spraying a user one attempt short of the threshold, and a cumulative lockout-rate detector prompts/aborts instead of the old brittle "consecutive failures" logic.
+- **End-of-run metrics**, an optional live tally (`-v`), richer result classification (e.g. password-expired / disabled accounts are reported as *valid credentials*), migration to the maintained `gokrb5/v8` library, a package layout with a test suite, and CI.
+
+## Install
 ```
-go install github.com/Tylous/Talon@latest
+go install github.com/ZerkerEOD/Talon@latest
 ```
 
-## Contributing
-Talon was developed in golang.
-
-The first step as always is to clone the repo. Before you compile Talon you'll need to install the dependencies. To install them, run following commands:
+## Build from source
+Talon is written in Go (module path `github.com/ZerkerEOD/Talon`, Go 1.26+ — required by the patched `golang.org/x/crypto`). Clone the repo and build — dependencies are resolved automatically from `go.mod`:
 ```
-go get github.com/fatih/color
-go get gopkg.in/jcmturner/gokrb5.v7/client
-go get gopkg.in/jcmturner/gokrb5.v7/config
-go get gopkg.in/jcmturner/gokrb5.v7/iana/etypeID
-go get gopkg.in/ldap.v2
-```
-Then build it
-
-```
-go build Talon.go
+git clone https://github.com/ZerkerEOD/Talon
+cd Talon
+go build .       # produces ./Talon
+go test ./...    # run the test suite
 ```
 
 ## Usage
@@ -42,10 +43,12 @@ go build Talon.go
 $ ./Talon -h
 Usage of ./Talon:
   -A float
-    	Authentication attempts per lockout period (default 3)
+    	Password passes allowed before a mandatory lockout-period sleep (default 3)
   -D string
     	Fully qualified domain to use
-  -E	Enumerates which users are valid
+  -E	Enumerate valid users (safe, pre-auth-less: never increments badPwdCount)
+  -Eagg
+    	Aggressive enumeration (submits pre-auth; CAN lock accounts). Implies -E
   -H string
     	Domain controller to connect to
   -Hostfile string
@@ -53,15 +56,17 @@ Usage of ./Talon:
   -K	Test against Kerberos only
   -L	Test against LDAP only
   -LockErr float
-      Repetative lockout errors (default 1)
+    	Distinct observed lockouts that trigger the stop-and-prompt detector (default 1)
   -Lockout float
     	Account lockout period in minutes (default 60)
   -O string
-    	File to append the results to
+    	File to append the results to (created with 0600 permissions)
   -P string
     	Password to use
   -Passfile string
     	File containing the list of passwords
+  -Threshold int
+    	AD account-lockout threshold (badPwdCount limit); stop one attempt short. 0 = unknown
   -U string
     	Username to authenticate as
   -Userfile string
@@ -69,12 +74,20 @@ Usage of ./Talon:
   -debug
     	Print debug statements
   -sleep float
-    	Time inbetween attempts (default 0.5)
+    	Time in between attempts, seconds (default 0.5)
+  -v	Print a live running tally during the run
 ```
 
 
 ## Enumeration Mode
-User enumeration mode can be executed with the `-E` flag which will send only Kerberos TGT pre-authentication request to the target KDC, however, this request is sent with a known bad or no longer supported encryption type.  Talon reviews the response by the KDC to determine if responds with a `KDC_ERR_ETYPE_NOSUPP`, which indicates if a user exists or `KDC_ERR_C_PRINCIPAL_UNKNOWN` if it does not. Talon can perform this type of enumeration against multiple domain controllers in an enterprise using the `-Hostfile` command to specify multiple domain controllers, or a single domain controller using `-H`. Using this technique will not cause any login failures so it will not lock out any of the users.
+
+Talon has two enumeration modes:
+
+**Safe (default, `-E`).** Talon sends a *pre-authentication-less* Kerberos AS-REQ — it never includes an encrypted timestamp and therefore never submits a password. It classifies the KDC's first reply: `KDC_ERR_PREAUTH_REQUIRED` means the user exists, `KDC_ERR_C_PRINCIPAL_UNKNOWN` means it does not, and a returned AS-REP means the user exists and does not require pre-auth (AS-REP roastable). Because no password material is ever sent, this **does not increment `badPwdCount` and cannot lock accounts**.
+
+**Aggressive (`-Eagg`, opt-in).** This is the original technique: a real pre-auth exchange using an obsolete encryption type (`DES_CBC_CRC`). It surfaces extra signal (smartcard-required, DES-only, does-not-require-preauth), but because it performs a genuine pre-auth attempt it **can increment `badPwdCount` and lock accounts** on any DC that has not disabled DES/3DES (e.g. a default Windows Server 2022 DC). Talon requires an explicit confirmation before running it. This behavior — and the mass lockouts it can cause — is the subject of upstream issue #3, which the safe default mode resolves.
+
+Either mode can run against multiple domain controllers with `-Hostfile` or a single one with `-H`.
 
 ```
 ./Talon -D STARLABS.LOCAL -Hostfile DCs -Userfile Users -sleep 1 -E 
@@ -124,7 +137,12 @@ Talon utilize Kerberos and LDAP, which are both integrated into Active Directory
 
 Talon is designed to be versitale given any siutaiton as a result, if only Kerberose is available, Talon can be set to only attack against Kerberos using the `-K` flag or only LDAP using the `-L` flag.
 
-Talon can use both Kerberos and LDAP to read the responses as we perform a password guessing attack. Talon can detect account lockouts during an active password guessing attack by reading the response code from each password attempt. This can help prevent any unwanted account locks acorss a enterprise, helping you to remain undetected. Simply follow the prompt to quit or continue the attack.
+Talon uses both Kerberos and LDAP to read the responses as it performs a password-guessing attack, and detects account lockouts during the run. This fork tracks attempts and lockouts **per user and per domain controller** rather than with a single global counter, so interleaved sprays across alternating DCs are counted correctly. Two protections work together:
+
+- **Proactive budget (`-Threshold`).** When you supply the AD lockout threshold, Talon stops attempting a user one try short of it — so it never submits the attempt that trips the lockout (and whose "locked" status often only shows up later, on a DC that has not yet replicated the bad-password count). Without `-Threshold`, Talon warns you and relies on `-A` pacing plus the detector below.
+- **Cumulative lockout-rate detector (`-LockErr`).** Once the number of distinct accounts observed locked crosses `-LockErr` (default 1), or locks happen too fast within a sliding window, Talon pauses and prompts you to continue or quit.
+
+Simply follow the prompt to quit or continue the attack.
 
 ```
 root@kali:~# ./Talon -Hostfile DCs -Userfile ValidUsers -D STARLABS.local -P "Password!" -sleep 2
@@ -174,7 +192,7 @@ root@kali:~# ./Talon -H 172.14.15.1 -Userfile ValidUsers -D STARLABS.local -P "F
 
 ### Timing Controls
 
-Talon has the ability to perform password guessing against a list of possible passwords in a file using the (`-Passfile`). As this can be VERY DANGEROUS, Talon has controls in place to pause after a certain amount of attempts (`-A`) for a specified time (`-Lockout`). <b>Please note</b> that it is important to know the password policy before using these options as queueing multiple password attempts can lock out accounts if you do not have the Password policy. 
+Talon has the ability to perform password guessing against a list of possible passwords in a file using the (`-Passfile`). As this can be VERY DANGEROUS, Talon has controls in place to pause after a certain number of password passes (`-A`) for a specified time (`-Lockout`), and — when you provide it — hard-caps per-user attempts at `-Threshold` minus one. <b>Please note</b> that it is important to know the password policy before using these options; pass `-Threshold <lockout threshold>` so Talon can enforce a per-account safety budget, otherwise queueing multiple password attempts can lock out accounts.
 
 
 ```
@@ -218,3 +236,10 @@ Will resume at 03-10-2022 16:43:35
 * Version 1.4 released 03/17/2020
 * Version 2.0 public relase 06/18/2020
 * Version 3.0 relase 03/10/2022
+* Version 4.0.0 (ZerkerEOD fork) — safe-by-default pre-auth-less enumeration (`-E`) with opt-in aggressive mode (`-Eagg`); per-user/per-DC lockout tracking with `-Threshold` budget and cumulative lockout-rate detector; end-of-run metrics and `-v` live tally; migrated to gokrb5/v8; refactored into packages with tests + CI
+
+## Credits
+
+Talon was originally created by **[@Tyl0us](https://github.com/Tylous)** at **Optiv Security**, who designed the dual-protocol (Kerberos + LDAP) spraying and Kerberos user-enumeration techniques described in the Optiv blog post ["Digging Your Talons In — A New Take on Password Guessing"](https://www.optiv.com/explore-optiv-insights/blog/digging-your-talons-new-take-password-guessing). All of the original design and the bulk of this tool are their work.
+
+This repository is a maintenance fork by **[@ZerkerEOD](https://github.com/ZerkerEOD)**, continued because upstream is no longer actively maintained. It is distributed under the original MIT license (see [LICENSE](LICENSE)), retaining Optiv's copyright and adding the fork's.
